@@ -1,0 +1,17 @@
+{
+  "name": "ppj-plugin",
+  "authors": [
+    "Waqar Ali <aliksg@gmail.com>"
+  ],
+  "description": "",
+  "main": "helloworld.js",
+  "license": "MIT",
+  "homepage": "",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
