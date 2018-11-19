@@ -1,12 +1,13 @@
 {
     "name": "adapt-ppj-plugin",
-    "repository": "git://github.com/getinclusive/adapt-ppj-plugin",
+    "version": "1.0.0",
+    "repository": "git://github.com/getinclusive/adapt-ppj-plugin.git",
     "framework": "~2.0.0",
     "authors": [
         "Waqar Ali <aliksg@gmail.com>"
     ],
     "description": "",
-    "main": "helloworld.js",
+    "main": "/js/helloworld.js",
     "license": "MIT",
     "homepage": "",
     "ignore": [
