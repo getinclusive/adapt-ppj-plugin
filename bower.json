@@ -1,17 +1,19 @@
 {
-  "name": "ppj-plugin",
-  "authors": [
-    "Waqar Ali <aliksg@gmail.com>"
-  ],
-  "description": "",
-  "main": "helloworld.js",
-  "license": "MIT",
-  "homepage": "",
-  "ignore": [
-    "**/.*",
-    "node_modules",
-    "bower_components",
-    "test",
-    "tests"
-  ]
+    "name": "adapt-ppj-plugin",
+    "repository": "git://github.com/getinclusive/adapt-ppj-plugin",
+    "framework": "~2.0.0",
+    "authors": [
+        "Waqar Ali <aliksg@gmail.com>"
+    ],
+    "description": "",
+    "main": "helloworld.js",
+    "license": "MIT",
+    "homepage": "",
+    "ignore": [
+        "**/.*",
+        "node_modules",
+        "bower_components",
+        "test",
+        "tests"
+    ]
 }
