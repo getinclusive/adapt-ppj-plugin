@@ -7,7 +7,7 @@
         "Waqar Ali <aliksg@gmail.com>"
     ],
     "description": "",
-    "main": "/js/ppjplugin.js",
+    "main": "js/ppjplugin.js",
     "license": "MIT",
     "keywords": ["adapt-extension"],
     "homepage": ""
