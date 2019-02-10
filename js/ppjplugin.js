@@ -1,6 +1,7 @@
 define([
+  './timeme.js/timeme',
   'core/js/adapt'
-], function (Adapt) {
+], function (TimeMe, Adapt) {
 
   var PPJPlugin = (function(){
 
@@ -35,6 +36,31 @@ define([
         window.API = ppjProxy;
 
       }
+
+      function idleCallback() {
+        alert('Course Progress timer is resuming after being paused due to switching tabs / closing window or idle inactivity');
+      }
+
+      TimeMe.callWhenUserReturns(idleCallback, 1);
+
+      function saveTime() {
+        var storage = window.localStorage;
+
+        var session_time_current = TimeMe.getTimeOnCurrentPageInSeconds();
+        //var session_time_total = Number(storage.getItem('session_time_total') || 0.0) + session_time_current;
+
+        // or TimeMe.getTimeOnAllPagesInSeconds();
+
+        console.log(session_time_current);
+        storage.setItem('session_time_current', session_time_current);
+        //storage.setItem('session_time_total',  session_time_total);
+
+      }
+
+      // Save the value
+      setInterval(function() {
+          saveTime();
+      }, 5 * 1000); // 60 * 1000 milsec
 
       //==========================================================================
       //==== AJAX Util function, always sends ucat
@@ -341,6 +367,11 @@ define([
     g.org_resources = window.localStorage.getItem('ppj.org_resources');
 
     console.log('Adapt _globals variable:' + JSON.stringify(g.org_resources));
+
+    TimeMe.initialize({
+      currentPageName: "my-home-page", // current page
+      idleTimeoutInSeconds: 30 // seconds
+    });
 
     // Todo navigate to element using a.navigateToElement('.c-15')
     // https://github.com/adaptlearning/adapt_framework/wiki/Adapt-API#adaptnavigatetoelement

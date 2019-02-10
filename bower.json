@@ -3,6 +3,15 @@
     "repository": "git://github.com/getinclusive/adapt-ppj-plugin.git",
     "framework": "~2.0.0",
     "version": "1.0.0",
+    "private": true,
+    "dependencies": {
+      "timeme.js": "latest"
+
+    },
+    "devDependencies": {
+      "timeme.js": "latest"
+
+    },
     "authors": [
         "Waqar Ali <aliksg@gmail.com>"
     ],
