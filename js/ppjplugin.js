@@ -34,7 +34,7 @@ define([
         // ppjProxy.preloadData();
         window.API = ppjProxy;
 
-      };
+      }
 
       //==========================================================================
       //==== AJAX Util function, always sends ucat
@@ -56,7 +56,7 @@ define([
         .fail( function(jqXHR, txtStatus) {
           console.log('Err:' + txtStatus);
         });
-      };
+      }
 
       //==========================================================================
       //==== Post completion percent
@@ -64,7 +64,7 @@ define([
       function course_completion_percent_post (percent_completed) {
         ajaxPPJ('POST', '/student/course_percent_completed', {percent: percent_completed})
         .done( function(retVal) {ppjConsoleLog('Percent info sent: ' + JSON.stringify(retVal)); })
-        .fail( function(retVal) {ppjConsoleLog('Percent post ERROR: ' + JSON.stringify(retVal))});
+        .fail( function(retVal) {ppjConsoleLog('Percent post ERROR: ' + JSON.stringify(retVal)); });
         return true;
       }
 
@@ -124,7 +124,7 @@ define([
           //window.localStorage.setItem('ppj.lms_loaded', "false");
           if ( confirm('Your Session has ended, your progress has been saved.  Now returning you to the origin.') ) {
             window.location = window.localStorage.getItem('ppj.return_path_url');
-          };
+          }
           return 'true';
           // todo: cmi.exit
           // What does cmi.exit do? It provides some context to the LMS regarding why
@@ -179,7 +179,7 @@ define([
             ppjConsoleLog('Sending Completion to LMS: percent: 100% and user_event: course_end');
             course_completion_percent_post(100);
             user_event_post('course_end');
-          };
+          }
 
           setLocalStorage(name, val);
 
@@ -191,7 +191,7 @@ define([
           if (window.localStorage.getItem('ppj.lms_loaded') == 'true') {
             var localStorageKeys = _.chain(window.localStorage)
                                     .keys()
-                                    .filter(function(a){ return a.search(ignore_namespace) })
+                                    .filter(function(a){ return a.search(ignore_namespace); })
                                     .difference(commit_ignore)
                                     .value();
 
@@ -227,15 +227,15 @@ define([
 
         this.LMSStore = function (p){
           ppjConsoleLog('LMSStore called');
-        }
+        };
 
         this.LMSFetch = function (p){
           ppjConsoleLog('LMSFetch called');
-        }
+        };
 
         this.LMSClear = function (p){
           ppjConsoleLog('LMSClear called');
-        }
+        };
 
         return this;
       }
@@ -251,7 +251,7 @@ define([
           }
         }
         ppjConsoleLog('Query variable not found,'+ variable);
-      };
+      }
 
       /////////////////////////////////////
 
@@ -267,19 +267,19 @@ define([
         } else {
           ppjConsoleLog('Skipping LocalStorage set to Undefined Value');
         }
-      };
+      }
 
       function setLocalStorageIfBlank (k, default_val) {
         var lsval = window.localStorage.getItem(k);
 
         if ( lsval == null) {
-          ppjConsoleLog('Setting blank value of LocalStorage: ' + k + ' - to: [' + default_val + ']')
+          ppjConsoleLog('Setting blank value of LocalStorage: ' + k + ' - to: [' + default_val + ']');
           window.localStorage.setItem(k, default_val);
         } else {
-          ppjConsoleLog('LocalStorage value non blank, leaving it alone: ' + k + ': [' + lsval + ']')
-        };
+          ppjConsoleLog('LocalStorage value non blank, leaving it alone: ' + k + ': [' + lsval + ']');
+        }
         return true;
-      };
+      }
 
       // -- Calculate Percent using Adapt completion STRING
       function calculatePercentage () {
