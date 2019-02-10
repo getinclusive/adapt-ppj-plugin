@@ -2,52 +2,47 @@ define([
   'core/js/adapt'
 ], function (Adapt) {
 
-  function PPJPlugin() {
+  var PPJPlugin = (function(){
 
-      var api_key = 'SDyOS93tTG37IopubAbnO6EFpgtkHPARa4u32Ecq';
-      var debug_log = true;
+      // Read values from QS or LS
+      var api_key =  getQueryVariable('api_key') || window.localStorage.getItem('ppj.api_key');
+      var ucat = getQueryVariable('ucat') || window.localStorage.getItem('ppj.ucat'); // Read from QS, if not avail then from LocalStorage
+      var debug_log = getQueryVariable('debug_log') || window.localStorage.getItem('ppj.debug_log');
 
-      // https://app.swaggerhub.com/apis-docs/getinclusive/status/1.3
-      // http://localhost:9001/index_lms.html?ucat=aa887e951e0b869a96271763612640a9&data=%7B%22session_data%22%3A%7B%22cmi.suspend_data%22%3A%22%7B%5C%22lang%5C%22%3A%5C%22en%5C%22%2C%5C%22a11y%5C%22%3Afalse%2C%5C%22completion%5C%22%3A%5C%2211110100000000000000%5C%22%2C%5C%22questions%5C%22%3A%5C%22%5C%22%2C%5C%22_isCourseComplete%5C%22%3Afalse%2C%5C%22_isAssessmentPassed%5C%22%3Afalse%7D%22%2C%22cmi.core.session_time%22%3A%220000%3A01%3A20.59%22%2C%22cmi.core.lesson_status%22%3A%22incomplete%22%2C%22ppj.completion_percent%22%3A%22%22%2C%22cmi.core.lesson_location%22%3A%22%22%2C%22cmi.student_preference.language%22%3A%22en%22%7D%7D&org_course_id=392
+      // LocalStorage Variables to ignore during LMSCommit call, also variables starting with ppj_
+      var commit_ignore = [
+                           'cmi.core.student_id',
+                           'cmi.core.first_name',
+                           'cmi.core.last_name',
+                           'cmi.core.student_name',
+                           ];
+      var ignore_namespace = 'ppj.'; // any localstorage variable starting with this will be ignored
 
-      // https://app.getinclusive.com/authenticate/q31qg9XjhkjpTwuBXMu8HQkVpE6bH2V9QZxkQzyappP7Ze8XkeYyp6RrL9ATZpyxp7rX8EyYsqqtaSPuxXJhRgrr?course=aa887e951e0b869a96271763612640a9&email=ali%2Badapt%40getinclusive.com
-
-      ppjConsoleLog("ppjSCO js starting...");
-
-      // Get student Data
-
-      // todo: if we are NOT in PPJ LMS then we have big problems
-      if (ucat == null) {
-      	ucat = getQueryVariable('ucat');
-      }
-
-      // DEBUG?
-      if (debug_log == null) {debug_log = getQueryVariable('ppj_debug');}
-
-      var ocID = getQueryVariable('org_course_id');
-      var ucat = getQueryVariable('ucat');
+      ppjConsoleLog('ppjSCO js starting...');
 
       ppjConsoleLog('QS ucat: ' + ucat);
-      ppjConsoleLog('QS ocID: ' + ocID);
+      ppjConsoleLog('QS debug: ' + debug_log);
 
-      if (ucat === undefined) {
-        // If querystring not defined then we must be in non PPJ LMS
+      if (ucat === undefined || ucat == '') {
+        alert('Please contact success@getinclusive.com [ERROR: ucat not available]');
       }
       else {
         // PPJ LMS Proxy
         ppjConsoleLog('ucat defined, instantiating PPJProxy');
-        var ppjProxy = new PPJScormProxy(ucat);
+        var ppjProxy = PPJScormProxy(ucat);
 
         // ppjProxy.preloadData();
-
         window.API = ppjProxy;
 
       };
 
-      // AJAX Util function, always sends ucat
+      //==========================================================================
+      //==== AJAX Util function, always sends ucat
+      //==========================================================================
       function ajaxPPJ(type, endpoint, payload){
-      	var ajax_url = 'https://api.getinclusive.com/prod' + endpoint;
+        var ajax_url = 'https://api.getinclusive.com/prod' + endpoint;
         ppjConsoleLog('Ajax call: ' + type + ' ' + ajax_url);
+        api_data = _.extend( {'ucat': ucat}, payload);
 
         return $.ajax({
           url: ajax_url,
@@ -55,137 +50,88 @@ define([
           cache: false,
           //crossDomain: true,
           headers:{'x-api-key': api_key},
-          data: {ucat: ucat, data: payload},
+          data: api_data,
         })
-        .done( function(ret) { console.log('Done:' + JSON.stringify(ret)); })
+        .done( function(ret) { ppjConsoleLog('Ajax call Done:' + ajax_url); })
         .fail( function(jqXHR, txtStatus) {
           console.log('Err:' + txtStatus);
         });
+      };
+
+      //==========================================================================
+      //==== Post completion percent
+      //==========================================================================
+      function course_completion_percent_post (percent_completed) {
+        ajaxPPJ('POST', '/student/course_percent_completed', {percent: percent_completed})
+        .done( function(retVal) {ppjConsoleLog('Percent info sent: ' + JSON.stringify(retVal)); })
+        .fail( function(retVal) {ppjConsoleLog('Percent post ERROR: ' + JSON.stringify(retVal))});
+        return true;
+      }
+
+      //==========================================================================
+      //==== POST user_event
+      //==========================================================================
+      function user_event_post (user_event) {
+        ajaxPPJ('POST', '/student/user_event', {user_event: user_event})
+        .done( function(retVal) {ppjConsoleLog('User event posted sent: ' + JSON.stringify(retVal)); })
+        .fail( function(retVal) {ppjConsoleLog('User event post ERROR: ' + JSON.stringify(retVal)); });
+        return true;
+      }
+
+      //==========================================================================
+      //==== log activity in localstorage, todo: add unique objects only
+      //==========================================================================
+      function log_activity (activityObject) {
+        var logKey = 'activityLog';
+        var existinglogObjects = JSON.parse(window.localStorage.getItem(logKey)) || [];
+
+
+        activityObject.timestamp = js_yyyy_mm_dd_hh_mm_ss();
+        existinglogObjects.push(activityObject);
+
+        // if ( _.findWhere(existinglogObjects, activityObject) == null ) {
+        // }
+
+        setLocalStorage(logKey, JSON.stringify(existinglogObjects));
+
+        return true;
       }
 
       // PPJ SCORM API PROXY //
       function PPJScormProxy (ucat) {
         // https://scorm.com/scorm-explained/technical-scorm/run-time/run-time-reference/
 
-        ppjConsoleLog('=== PPJSCORMPROXY function ===');
-
-        this.userCourseAuthToken = ucat;
-
-        setLocalStorage('cmi.core.lesson_status', 'incomplete');
-        setLocalStorage('cmi.core.exit', 'suspend');
-
-        // true after we have initialized the local variables from server
-        // this is to prevent commiting blank values to server
-        PPJScormProxy.student_data_initialized = false;
-        PPJScormProxy.session_data_initialized = false;
-        PPJScormProxy.org_customizations_initialized = false;
-
-        reloadPageIfReady = function () {
-          if (  PPJScormProxy.student_data_initialized &&
-                PPJScormProxy.session_data_initialized &&
-                PPJScormProxy.org_customizations_initialized) {
-            reloadPage();
-          };
-        };
-
-        // We need to get as much data as quickly as possible
-        // before the SCORM initialize is called, because
-        this.preloadData = function () {
-          ppjConsoleLog("PPJ Proxy Preload Data");
-
-          // === STUDENT VALIDATION ===
-          // Get the values from the server but do not set them until the session data is set to CMI variables
-          ajaxPPJ('GET','/student/validate')
-          .done(function(retJson){
-
-            ppjConsoleLog(">>>>>> LMSInitialize - Validated Student: " + retJson.status);
-
-            // Set the values from /student/user_data
-            setLocalStorage('cmi.core.student_id', retJson.email);
-            setLocalStorage('cmi.core.student_name', retJson.last_name + ', ' + retJson.first_name);
-            setLocalStorage('cmi.core.first_name', retJson.first_name);
-            setLocalStorage('cmi.core.last_name', retJson.last_name);
-
-            PPJScormProxy.student_data_initialized = true;
-            reloadPageIfReady();
-
-          })
-          .fail(function(jqXHR, txtStatus) { ppjConsoleLog(">>>>> PRELOAD - Error Validating Student"); });
-
-          // === ORG RESOURCES ===
-          // Adapt.course._globals._learnerInfo.jfk = 'UPDATED';
-          // Setup resources variable
-          ajaxPPJ('GET', '/student/resources')
-          .done(function(retJson){
-            ppjConsoleLog("Obtained Org Resources: " + Object.keys(retJson.result).length);
-            // console.log(retJson.result);
-            setLocalStorage('org_resources', JSON.stringify(retJson.result));
-            PPJScormProxy.org_customizations_initialized = true;
-            reloadPageIfReady();
-          })
-          .fail(function(jqXHR, txtStatus) { ppjConsoleLog(">>>>> PRELOAD - Error Obtaining Org Resources"); });
-
-          // === SESSION DATA INIT ===
-          ajaxPPJ('GET', '/student/session_data')
-          .done(function(retJson){
-            var session_data = retJson['data']['session_data'];
-            var cmi_keys_in_LMS = _.keys(session_data);
-
-            ppjConsoleLog("Initializing the session variables: " + cmi_keys_in_LMS);
-            ppjConsoleLog("    with data: " + JSON.stringify(retJson['data']));
-
-            if (JSON.stringify(retJson.data).length == 2) {
-              ppjConsoleLog("Session Data is empty, nothing to set locally");
-              PPJScormProxy.session_data_initialized = true;
-              this.reloadPageIfReady();
-              return true;
-            };
-
-            if (session_data) {
-              // Initialize the cmi variables
-              cmi_keys_in_LMS.forEach(function(item, i){
-                var val = session_data[item];
-
-                // lesson_status should be set to incomplete as a start value
-                if ( item == 'cmi.core.lesson_status' && val == '') {
-                  ppjConsoleLog('Initializing - Lesson Status is blank, setting to incomplete')
-                  val = 'incomplete';
-                };
-
-                // Set other non-blank variables
-                if (val != '' && val != undefined) {
-                  ppjConsoleLog("Setting session variable: [" + item + "] to [" + val + "]");
-                  window.localStorage.setItem(item, val);
-                } else {
-                  ppjConsoleLog("BLANK session variable... SKIPPING: [" + item + "] to [" + val + "]");
-
-                };
-
-              });
-            } else {
-              ppjConsoleLog('Got EMPTY session data... nothing to initialize');
-            };
-
-            PPJScormProxy.session_data_initialized = true;
-            reloadPageIfReady();
-
-            return true;
-
-          })
-          .fail(function(jqXHR, txtStatus) { ppjConsoleLog(">>>>>> PRELOAD - Error, could not initialize the session variables"); });
-
-        };
+        ppjConsoleLog('=== PPJSCORMPROXY STARTING ===');
 
         // LMSInitialize( “” ) : bool – Begins a communication session with the LMS.
         this.LMSInitialize = function (p) {
           ppjConsoleLog ('LMSInitialize called');
-          return "true";
+
+          if (window.localStorage.getItem('ppj.lms_loaded') == 'true') {
+            return 'true';
+          } else {
+            var preloaderURL = localStorage.getItem('ppj.reloadlocation');
+            if (!preloaderURL)
+              window.location.replace(preloaderURL);
+            else
+              return 'false';
+          }
         };
 
         // LMSFinish( “” ) : bool – Ends a communication session with the LMS.
         this.LMSFinish = function (p) {
           ppjConsoleLog('LMSFinish called');
+          //window.localStorage.setItem('ppj.lms_loaded', "false");
+          if ( confirm('Your Session has ended, your progress has been saved.  Now returning you to the origin.') ) {
+            window.location = window.localStorage.getItem('ppj.return_path_url');
+          };
           return 'true';
+          // todo: cmi.exit
+          // What does cmi.exit do? It provides some context to the LMS regarding why
+          // the course was closed. For instance, if the course was closed because it was
+          // completed by the learner, the exit status should be set to "logout".
+          // Likewise, if the course was closed before it was completed (and the learner
+          // intends to resume where they left off), the exit status should be set to "suspend".
         };
 
         // LMSGetLastError() : CMIErrorCode – Returns the error code that resulted from the last API call.
@@ -217,80 +163,41 @@ define([
         // LMSGetValue( element : CMIElement ) : string – Returns value from LocalStorage
         // and refreshes the localStorage from the LMS.
         this.LMSGetValue = function (name) {
-
-          return window.localStorage.getItem(name) || "";
+          return window.localStorage.getItem(name) || '';
         };
 
         // LMSSetValue( element : CMIElement, value : string) : string –
         // Saves a value to localStorage and if LMS Intiialized then also to LMS.
         this.LMSSetValue = function (name, val) {
+          ppjConsoleLog('LMSSetValue for: ' + name + ' = [' + val + ']');
 
-          // if (PPJScormProxy.session_data_initialized == true) {
-          if (true == true) {
-            // Merge the suspend_data object instead of overwriting it
-            // if (name == 'zzcmi.suspend_data') {
-            //   var existing_suspend_data = JSON.parse(window.localStorage.getItem(name));
-            //
-            //   existing_completion_string = parseInt(existing_suspend_data['completion']);
-            //   new_completion_string = parseInt(val['completion']) || 0;
-            //   ppjConsoleLog("Union completion String of: [" + existing_completion_string + "] and [" + new_completion_string + "]");
-            //
-            //   updated_completion_string = existing_completion_string | new_completion_string;
-            //
-            //   var new_merged_suspend_data = _.extend({}, val, existing_suspend_data);
-            //   new_merged_suspend_data['completion'] = toString(updated_completion_string);
-            //
-            //   ppjConsoleLog('merging suspend data: ' + JSON.stringify(existing_suspend_data) + " - WITH - " + JSON.stringify(val));
-            //   ppjConsoleLog('New suspend data obj: ' + new_merged_suspend_data);
-            //
-            //   val = JSON.stringify(new_merged_suspend_data);
-            // };
-
-            setLocalStorage(name, val);
-            ppjConsoleLog('LMSSetValue for: ' + name + ' = [' + val + ']');
-          }
-          else {
-            console.log("LMSSetValue - skipping, LMS not yet initialized ");
+          // todo: register completion with LMS if we switched status from incomplete to complete
+          if (name === 'cmi.core.lesson_status' &&
+              this.LMSGetValue('cmi.core.lesson_status') != 'completed' &&
+              val === 'completed')
+          {
+            ppjConsoleLog('Sending Completion to LMS: percent: 100% and user_event: course_end');
+            course_completion_percent_post(100);
+            user_event_post('course_end');
           };
 
-          // todo: register completion with LMS
-          if (name === 'cmi.core.lesson_status' && val === 'completed') {
-            ppjConsoleLog('Send Completion to LMS');
-          };
-
-          // When lesson location changes then calculate percentage unless the course is completed
-          // then ignore
-          // todo: register with server
-
-          // if (name === 'cmi.core.lesson_location' && window.API.LMSGetValue('cmi.core.lesson_status') !== 'completed') {
-          //   var completionStr = JSON.parse(window.API.LMSGetValue('cmi.suspend_data')).completion;
-          //   var completionPct = calculatePercentage(completionStr);
-          //   window.localStorage.setItem('ppj.completion_percent', completionPct);
-          //   ppjConsoleLog('Completion: ' + completionPct);
-          // }
+          setLocalStorage(name, val);
 
           return 'true';
         };
 
-        // LMSCommit( “” ) : bool – Indicates to the LMS that all data should be persisted (not required).
+        // SCO method to persist data
         this.LMSCommit = function (p) {
-          var localstorage_vars_to_ignore_from_commit = [
-                                       "cmi.core.student_id",
-                                       "cmi.core.first_name",
-                                       "cmi.core.last_name",
-                                       "cmi.core.student_name",
-                                       "firstLoad",
-                                     "org_resources"];
+          if (window.localStorage.getItem('ppj.lms_loaded') == 'true') {
+            var localStorageKeys = _.chain(window.localStorage)
+                                    .keys()
+                                    .filter(function(a){ return a.search(ignore_namespace) })
+                                    .difference(commit_ignore)
+                                    .value();
 
-          var localStorageKeys = _.chain(window.localStorage)
-                                  .keys()
-                                  .difference(localstorage_vars_to_ignore_from_commit)
-                                  .value();
+            ppjConsoleLog('Commiting values for LocalStorage Keys: ' + localStorageKeys);
 
-          ppjConsoleLog('Commiting values for LocalStorage Keys: ' + localStorageKeys);
-
-          // if (PPJScormProxy.session_data_initialized) {
-          if (true == true) {
+            // if (PPJScormProxy.session_data_initialized) {
             ppjConsoleLog('Scorm Commit - local variables had been initialized');
 
             var session_data_obj = {};
@@ -300,34 +207,37 @@ define([
             });
 
             var cmi_data = {
-              "session_data": session_data_obj
+              'session_data': session_data_obj
             };
 
-            ppjConsoleLog("Committing CMI Data: " + JSON.stringify(cmi_data));
+            ppjConsoleLog('Committing CMI Data: ' + JSON.stringify(cmi_data));
 
-            ajaxPPJ('POST', '/student/session_data', cmi_data)
+            ajaxPPJ('POST', '/student/session_data', {'data': cmi_data})
             .done( function(retVal) {ppjConsoleLog('LMS Committed: ' + JSON.stringify(retVal)); return 'true';})
             .fail( function(retVal) {ppjConsoleLog('LMS Commit Error: ' + JSON.stringify(retVal)); return 'false';});
+            return 'true';
 
           } else {
-            ppjConsoleLog('Scorm Commit SKIPPING - Local variables not yet initialized');
-          };
+            // Lost connection from the LMS
+            ppjConsoleLog('ppj.lms_loaded is falsy, cannot commit');
+            return 'false';
 
-          return 'true';
-
+          }
         };
 
         this.LMSStore = function (p){
-          ppjConsoleLog("LMSStore called");
+          ppjConsoleLog('LMSStore called');
         }
 
         this.LMSFetch = function (p){
-          ppjConsoleLog("LMSFetch called");
+          ppjConsoleLog('LMSFetch called');
         }
 
         this.LMSClear = function (p){
-          ppjConsoleLog("LMSClear called");
+          ppjConsoleLog('LMSClear called');
         }
+
+        return this;
       }
 
       // //////QUERY STRING PARSER /////////
@@ -343,10 +253,10 @@ define([
         ppjConsoleLog('Query variable not found,'+ variable);
       };
 
-      // ///////////////////////////////////
+      /////////////////////////////////////
 
       function ppjConsoleLog (msg) {
-      	if (debug_log) {
+      	if (debug_log == 'true') {
         	console.log(' *** PPJ *** ' + js_yyyy_mm_dd_hh_mm_ss() + ': ' + msg);
         }
       }
@@ -359,35 +269,25 @@ define([
         }
       };
 
-      // Fix for SCORM where page does not always work as async data from LMS comes not soon enough
-      // so reload is best option
-      function reloadPage () {
-        if( !localStorage.getItem('firstLoad') ) {
-          localStorage['firstLoad'] = true;
-          window.location.reload();
-        }
-        else
-          localStorage.removeItem('firstLoad');
-      };
-
       function setLocalStorageIfBlank (k, default_val) {
         var lsval = window.localStorage.getItem(k);
 
         if ( lsval == null) {
-          ppjConsoleLog("Setting blank value of LocalStorage: " + k + " - to: [" + default_val + "]")
+          ppjConsoleLog('Setting blank value of LocalStorage: ' + k + ' - to: [' + default_val + ']')
           window.localStorage.setItem(k, default_val);
         } else {
-          ppjConsoleLog("LocalStorage value non blank, leaving it alone: " + k + ": [" + lsval + "]")
+          ppjConsoleLog('LocalStorage value non blank, leaving it alone: ' + k + ': [' + lsval + ']')
         };
         return true;
       };
 
       // -- Calculate Percent using Adapt completion STRING
-      function calculatePercentage (completionStr) {
+      function calculatePercentage () {
         // -- Calculate Percent using component collection
         // cc.first().attributes._isComplete
         // var p = adp.components.filter(function(m) { return m.get('_isComplete') == true; } ).length / adp.components.length
 
+        var completionStr = JSON.parse(window.localStorage.getItem('cmi.suspend_data')).completion;
         var roundedPct = 0;
         ppjConsoleLog('Completion calc for: ' + completionStr);
 
@@ -400,27 +300,31 @@ define([
         return roundedPct;
       }
 
-      // var url = 'https://s3.amazonaws.com/getinclusive-assets/adapt/build/index_lms.html?ucat=aa887e951e0b869a96271763612640a9&org_course_id=392';
-      // https://assets.getinclusive.com/adapt/build/index_lms.html?ucat=aa887e951e0b869a96271763612640a9&org_course_id=392#/
-
       function js_yyyy_mm_dd_hh_mm_ss () {
         now = new Date();
-        year = "" + now.getFullYear();
-        month = "" + (now.getMonth() + 1); if (month.length == 1) { month = "0" + month; }
-        day = "" + now.getDate(); if (day.length == 1) { day = "0" + day; }
-        hour = "" + now.getHours(); if (hour.length == 1) { hour = "0" + hour; }
-        minute = "" + now.getMinutes(); if (minute.length == 1) { minute = "0" + minute; }
-        second = "" + now.getSeconds(); if (second.length == 1) { second = "0" + second; }
-        return year + "-" + month + "-" + day + " " + hour + ":" + minute + ":" + second;
+        year = '' + now.getFullYear();
+        month = '' + (now.getMonth() + 1); if (month.length == 1) { month = '0' + month; }
+        day = '' + now.getDate(); if (day.length == 1) { day = '0' + day; }
+        hour = '' + now.getHours(); if (hour.length == 1) { hour = '0' + hour; }
+        minute = '' + now.getMinutes(); if (minute.length == 1) { minute = '0' + minute; }
+        second = '' + now.getSeconds(); if (second.length == 1) { second = '0' + second; }
+        return year + '-' + month + '-' + day + ' ' + hour + ':' + minute + ':' + second;
       }
 
       console.log($.fn.jquery);
 
-    }
+      return {
+        ppjConsoleLog: ppjConsoleLog,
+        calculatePercentage: calculatePercentage,
+        course_completion_percent_post: course_completion_percent_post,
+        log_activity: log_activity,
+        ajaxPPJ: ajaxPPJ
+      };
+    })();
 
   console.log('PPJ Plugin Starting');
 
-  window.PPJ = new PPJPlugin();
+  window.PPJ = PPJPlugin;
 
   // $.getScript('https://s3.amazonaws.com/getinclusive-assets/adapt/ppjSCO.js', function(){
   //   ppj_start(Adapt);
@@ -434,14 +338,19 @@ define([
     // We should already have org Resources, part of PPJ plugin intitialization
     // todo exception handle if we do not have it
     var g = Adapt.course.get('_globals');
-    g.org_resources = window.localStorage.getItem('org_resources');
+    g.org_resources = window.localStorage.getItem('ppj.org_resources');
 
     console.log('Adapt _globals variable:' + JSON.stringify(g.org_resources));
 
     // Todo navigate to element using a.navigateToElement('.c-15')
     // https://github.com/adaptlearning/adapt_framework/wiki/Adapt-API#adaptnavigatetoelement
     Adapt.components.on('change:_isComplete', function(model) {
-      console.log('This component just changed complete status', model.get('_id'));
+      var component_id = model.get('_id');
+      var course_percent_completed = PPJ.calculatePercentage();
+
+      PPJ.ppjConsoleLog('This component just changed complete status: ' + component_id + ' competion %: ' + course_percent_completed);
+      PPJ.course_completion_percent_post(course_percent_completed);
+      PPJ.log_activity({'id': component_id});
     });
 
   });
