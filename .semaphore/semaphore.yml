@@ -5,16 +5,16 @@ agent:
     type: e1-standard-2
     os_image: ubuntu1804
 blocks:
-  - name: 'Block #1'
+  - name: Dependencies
     dependencies: []
     task:
       jobs:
-        - name: Check versions
+        - name: AWS/Kubectl
           commands:
             - aws --version
             - docker --version
             - kubectl version --client
-        - name: Install Helm
+        - name: Helm
           commands:
             - 'curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3'
             - chmod 700 get_helm.sh
@@ -23,3 +23,5 @@ blocks:
         - name: 'Job #3'
           commands:
             - aws s3 ls
+      secrets:
+        - name: aws
