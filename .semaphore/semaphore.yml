@@ -20,3 +20,6 @@ blocks:
             - chmod 700 get_helm.sh
             - ./get_helm.sh
             - helm version
+        - name: 'Job #3'
+          commands:
+            - aws s3 ls
