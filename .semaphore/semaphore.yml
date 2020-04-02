@@ -4,14 +4,4 @@ agent:
   machine:
     type: e1-standard-2
     os_image: ubuntu1804
-blocks:
-  - name: Test
-    task:
-      jobs:
-        - name: Install Dep
-          matrix:
-            - env_vars: PYTHON_VERSION
-              values:
-                - '3.7'
-          commands:
-            - python -m pip install --upgrade pip
+blocks: []
