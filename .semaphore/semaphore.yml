@@ -8,19 +8,13 @@ blocks:
   - name: Test
     task:
       jobs:
-        - name: pytest
+        - name: Install Dep
           matrix:
             - env_vars: PYTHON_VERSION
               values:
-                - '2.7'
-                - '3.5'
-                - '3.6'
                 - '3.7'
           commands:
             - sem-version python $PYTHON_VERSION
             - checkout
             - python -m pip install --upgrade pip
-            - 'curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.18.0/bin/linux/amd64/kubectl'
-            - chmod +x ./kubectl \
-            - '    && mv ./kubectl /usr/local/bin/kubectl \'
-            - '    && kubectl version --client'
+            - pip install -r requirements.txt
