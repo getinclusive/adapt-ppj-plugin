@@ -14,6 +14,7 @@ blocks:
             - aws --version
             - docker --version
             - kubectl version --client
+            - make -v
         - name: Helm
           commands:
             - 'curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3'
@@ -21,7 +22,4 @@ blocks:
             - ./get_helm.sh
             - helm version
         - name: 'Job #3'
-          commands:
-            - aws s3 ls
-      secrets:
-        - name: aws
+          commands: []
