@@ -4,4 +4,11 @@ agent:
   machine:
     type: e1-standard-2
     os_image: ubuntu1804
-blocks: []
+blocks:
+  - name: 'Block #1'
+    dependencies: []
+    task:
+      jobs:
+        - name: 'Job #1'
+          commands:
+            - aws --version
