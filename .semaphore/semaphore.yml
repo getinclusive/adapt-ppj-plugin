@@ -14,15 +14,4 @@ blocks:
               values:
                 - '3.7'
           commands:
-            - checkout
             - python -m pip install --upgrade pip
-  - name: 'Block #2'
-    task:
-      jobs:
-        - name: 'Job #1'
-          commands: []
-  - name: 'Block #3'
-    task:
-      jobs:
-        - name: 'Job #1'
-          commands: []
