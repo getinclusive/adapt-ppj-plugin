@@ -14,7 +14,15 @@ blocks:
               values:
                 - '3.7'
           commands:
-            - sem-version python $PYTHON_VERSION
             - checkout
             - python -m pip install --upgrade pip
-            - pip install -r requirements.txt
+  - name: 'Block #2'
+    task:
+      jobs:
+        - name: 'Job #1'
+          commands: []
+  - name: 'Block #3'
+    task:
+      jobs:
+        - name: 'Job #1'
+          commands: []
