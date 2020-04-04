@@ -11,15 +11,8 @@ blocks:
       jobs:
         - name: AWS/Kubectl
           commands:
-            - aws --version
-            - docker --version
-            - kubectl version --client
-            - make -v
+            - checkout
+            - ls
+            - 'ls * | egrep ''^./[a-c].*'''
         - name: Helm
-          commands:
-            - 'curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3'
-            - chmod 700 get_helm.sh
-            - ./get_helm.sh
-            - helm version
-        - name: 'Job #3'
           commands: []
