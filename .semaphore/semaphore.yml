@@ -13,6 +13,6 @@ blocks:
           commands:
             - checkout
             - ls
-            - 'ls * | egrep ''^./[a-c].*'''
+            - 'ls * | grep -E ''^./[a-c].*'''
         - name: Helm
           commands: []
